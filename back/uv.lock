@@ -39,6 +39,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "pydantic" },
     { name = "redis" },
     { name = "uuid" },
     { name = "uvicorn" },
@@ -47,6 +48,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "fastapi", specifier = ">=0.120.0" },
+    { name = "pydantic", specifier = ">=2.12.3" },
     { name = "redis", specifier = ">=7.0.0" },
     { name = "uuid", specifier = ">=1.30" },
     { name = "uvicorn", specifier = ">=0.38.0" },
