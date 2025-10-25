@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 from redis import Redis
 import uuid
 import json
@@ -26,6 +27,14 @@ app = FastAPI(
     title="Health Checker API",
     description="Сервис для проверки хостов и взаимодействия с агентами.",
     version="1.0.0",
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # можно ограничить: ["http://localhost:3000"]
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 redis = Redis(host="redis", port=6379, decode_responses=True)
