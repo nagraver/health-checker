@@ -1,16 +1,82 @@
-# React + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# Aéza — Health Checker (Frontend)
 
-Currently, two official plugins are available:
+Простой SPA на React + Vite + Tailwind.
+Поддерживает запуск проверок, шаблоны и вывод результатов в виде двумерной таблицы (агенты × проверки).
+Обновление — через WebSocket (`/ws/check`) с фолбэком на polling каждые 2 секунды (`/result/{id}`).
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## API, ожидаемое фронтом
+- `POST /check` — `{ target: string, checks: string[] }` → `{ status: "queued", id: string }`
+- `GET /result/{id}` → `{ id, target, checks, results }`
+- `WS /ws/check` — отправляем `{ target, checks }`, получаем один JSON с результатом и закрываем соединение.
 
-## React Compiler
+Эти эндпоинты соответствуют вашему FastAPI (`mem.py`/`main.py`).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Запуск (dev)
+```bash
+cd front-aeza
+npm i
+# при dev, если бэкенд на 8000:
+VITE_API_PROXY=http://localhost:8000 npm run dev
+```
+Откройте http://localhost:5173
 
-## Expanding the ESLint configuration
+> Можно также задать `VITE_API_BASE` и `VITE_WS_BASE` если фронт и бэк на разных хостах:
+> ```bash
+> VITE_API_BASE=http://localhost:8000 VITE_WS_BASE=http://localhost:8000 npm run dev
+> ```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Сборка и Docker
+```bash
+npm run build
+```
+
+Docker-образ:
+```bash
+docker build -t aeza-front:latest .
+docker run -p 8080:80 --name aeza-front aeza-front:latest
+# Фронт будет на :8080, он проксирует /api и /ws на http://backend:8000 (см. nginx.conf)
+```
+
+## docker-compose (пример)
+```yaml
+services:
+  redis:
+    image: redis:7-alpine
+
+  backend:
+    build: .  # ваш FastAPI (где mem.py/main.py), должен слушать :8000
+    environment:
+      - REDIS_HOST=redis
+    depends_on: [redis]
+    ports: ["8000:8000"]
+
+  front:
+    build: ./front-aeza
+    depends_on: [backend]
+    ports:
+      - "8080:80"
+```
+⚠️ Убедитесь, что путь к фронту корректный (`./front-aeza`).
+
+## Интерфейс
+- Поле `target`
+- 5 чекбоксов: `ping`, `http`, `tcp`, `traceroute`, `dns`
+- Шаблоны: *Quick*, *Full site health*, *DNS only*
+- Таблица: первый столбец — *Агент* (сейчас `master` как заглушка), остальные — выбранные проверки.
+- JSON-раздел с сырыми данными для дебага.
+
+## Стиль
+Материалистичный минимализм под презентацию: светлый фон, карточки, таблицы, акцентный синий.
+
+## Расширение под мультиагент
+Сейчас выводится одна строка `master`. Когда бэкенд начнет возвращать результаты по агентам, добавьте `agents: [...]` в `ResultPayload` и
+модифицируйте `ResultsTable`, чтобы рендерить по строке на агента.
+```ts
+// пример формы данных на будущее
+interface AgentResult {
+  agentId: string
+  agentName: string
+  results: Record<CheckName, any>
+}
+```
